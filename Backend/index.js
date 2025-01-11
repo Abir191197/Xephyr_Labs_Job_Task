@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 7000;
@@ -47,7 +47,7 @@ const BooksDatabase = client.db("Xephyr_Labs_Task").collection("Book");
 
 //  create  Book
 
-app.post('/CreateBook', async (req, res) => {
+app.post('/Books', async (req, res) => {
     const { title, author, genre, published_year, language, page_count, summary } = req.body;
 
     // Basic Input Validation
@@ -112,17 +112,17 @@ app.get('/Books', async (req, res) => {
 //  delete a book by its ID
 app.delete('/Books/:id', async (req, res) => {
     const { id } = req.params;
-
+    
+    const objectId = new ObjectId(id);
+   
     try {
         
         // Attempt to delete the book from the database
-        const result = await BooksDatabase.deleteOne({ _id: id });
-
-        // If no book was deleted
-        if (result.deletedCount === 0) {
+        const result = await BooksDatabase.deleteOne({ _id: objectId });
+        
+        if (result.deletedCount === 0 ) {
             return res.status(404).json({ message: 'Book not found.' });
         }
-
         // Return success response
         res.status(200).json({ message: 'Book deleted successfully.' });
     } catch (error) {
@@ -137,17 +137,39 @@ app.delete('/Books/:id', async (req, res) => {
 });
 
 
+//books update by ID
+app.put('/Books/:id', async (req, res) => {
+    const { id } = req.params;
+    const updatedData = req.body;
+    const objectId = new ObjectId(id);
+    try {
+        
 
+       
+        const result = await BooksDatabase.findOneAndUpdate(
+            { _id: objectId },             
+            { $set: updatedData },            
+               
+        );
+        console.log(result);
+        // If no book was updated
+        if (!result ) {
+            return res.status(404).json({ message: 'Book not found.' });
+        }
 
+        // Return the updated book details
+        res.status(200).json({ message: 'Book updated successfully.' });
+        
+    } catch (error) {
+        console.error('Error updating book:', error.message);
 
-
-
-
-
-
-
-
-
+        // Return error response
+        res.status(500).json({
+            error: 'Internal Server Error',
+            details: error.message
+        });
+    }
+});
 
 
 
