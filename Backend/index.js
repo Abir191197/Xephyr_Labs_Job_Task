@@ -45,7 +45,7 @@ const BooksDatabase = client.db("Xephyr_Labs_Task").collection("Book");
 
 
 
-// POST Endpoint create  Book
+//  create  Book
 
 app.post('/CreateBook', async (req, res) => {
     const { title, author, genre, published_year, language, page_count, summary } = req.body;
@@ -85,7 +85,7 @@ app.post('/CreateBook', async (req, res) => {
     }
 });
 
-// GET Endpoint to fetch all books
+//  fetch all books
 app.get('/Books', async (req, res) => {
     try {
         // Fetch all books from the database
@@ -109,6 +109,32 @@ app.get('/Books', async (req, res) => {
     }
 });
 
+//  delete a book by its ID
+app.delete('/Books/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        
+        // Attempt to delete the book from the database
+        const result = await BooksDatabase.deleteOne({ _id: id });
+
+        // If no book was deleted
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'Book not found.' });
+        }
+
+        // Return success response
+        res.status(200).json({ message: 'Book deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting book:', error.message);
+
+        // Return error response
+        res.status(500).json({
+            error: 'Internal Server Error',
+            details: error.message
+        });
+    }
+});
 
 
 
