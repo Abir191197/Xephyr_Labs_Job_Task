@@ -43,9 +43,9 @@ const BooksDatabase = client.db("Xephyr_Labs_Task").collection("Book");
 
 
 
-//Create Book API
 
-// POST Endpoint with Error Handling and Validation
+
+// POST Endpoint create  Book
 
 app.post('/CreateBook', async (req, res) => {
     const { title, author, genre, published_year, language, page_count, summary } = req.body;
@@ -84,6 +84,32 @@ app.post('/CreateBook', async (req, res) => {
         });
     }
 });
+
+// GET Endpoint to fetch all books
+app.get('/Books', async (req, res) => {
+    try {
+        // Fetch all books from the database
+        const books = await BooksDatabase.find({}).toArray();
+
+       
+        if (books.length === 0) {
+            return res.status(404).json({ message: 'No books found.' });
+        }
+
+        
+        res.status(200).json(books);
+    } catch (error) {
+        console.error('Error fetching books:', error.message);
+
+        // Return error response
+        res.status(500).json({
+            error: 'Internal Server Error',
+            details: error.message
+        });
+    }
+});
+
+
 
 
 
