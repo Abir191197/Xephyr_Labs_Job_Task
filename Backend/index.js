@@ -27,9 +27,9 @@ const client = new MongoClient(uri, {
 async function connectToDatabase() {
     try {
         await client.connect();
-        console.log('✅ Connected to MongoDB');
+        console.log(' Connected to MongoDB');
     } catch (error) {
-        console.error('❌ MongoDB connection error:', error);
+        console.error(' MongoDB connection error:', error);
     }
 }
 
@@ -39,19 +39,53 @@ connectToDatabase();
 
 
 // MongoDB Collection Reference
-const test = client.db("Xephyr_Labs_Task").collection("Book");
+const BooksDatabase = client.db("Xephyr_Labs_Task").collection("Book");
 
-// Sample API Route to fetch Books
-app.get('/', async (req, res) => {
+
+
+//Create Book API
+
+// POST Endpoint with Error Handling and Validation
+
+app.post('/CreateBook', async (req, res) => {
+    const { title, author, genre, published_year, language, page_count, summary } = req.body;
+
+    // Basic Input Validation
+    if (!title || !author || !published_year ) {
+        return res.status(400).json({ error: 'Invalid input data. Please check required fields.' });
+    }
+
     try {
-        const courses = await test.find().toArray();
-        res.status(200).json(courses);
+        //  insert the book into the database
+        const newBook = {
+            title,
+            author,
+            genre,
+            published_year,
+            language,
+           
+            page_count,
+            summary,
+            createdAt: new Date()
+        };
+
+        const result = await BooksDatabase.insertOne(newBook);
+
+      
+        res.status(201).json({ message: 'Book created successfully!' });
+
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching data', error });
+        console.error('Error creating book:', error.message);
+
+       
+        res.status(500).json({
+            error: 'Internal Server Error',
+            details: error.message
+        });
     }
 });
 
-//
+
 
 
 
@@ -67,10 +101,10 @@ app.get('/', async (req, res) => {
 
 // Home Route
 app.get('/', (req, res) => {
-    res.send('✅ Application is Running');
+    res.send(' Application is Running');
 });
 
 // Start Server
 app.listen(port, () => {
-    console.log(`🚀 Server is running on http://localhost:${port}`);
+    console.log(` Server is running on http://localhost:${port}`);
 });
