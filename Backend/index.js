@@ -19,65 +19,65 @@ const client = new MongoClient(uri, {
         version: ServerApiVersion.v1,
         strict: true,
         deprecationErrors: true,
-    },
+    }
 });
 
-//====================Database connection Start=========================== 
+// Database connection handler
+let dbConnection;
 
 async function connectToDatabase() {
     try {
-        await client.connect();
-        console.log(' Connected to MongoDB');
+        if (!dbConnection) {
+            await client.connect();
+            dbConnection = client.db("Xephyr_Labs_Task");
+            console.log('Connected to MongoDB');
+        }
+        return dbConnection;
     } catch (error) {
-        console.error(' MongoDB connection error:', error);
+        console.error('MongoDB connection error:', error);
+        throw error;
     }
 }
 
-connectToDatabase();
-//====================Database connection End ===========================
+// Middleware to ensure database connection
+app.use(async (req, res, next) => {
+    try {
+        const db = await connectToDatabase();
+        req.db = db;
+        next();
+    } catch (error) {
+        res.status(500).json({
+            error: 'Database connection failed',
+            details: error.message
+        });
+    }
+});
 
-
-
-// MongoDB Collection Reference
-const BooksDatabase = client.db("Xephyr_Labs_Task").collection("Book");
-
-
-
-
-
-//  create  Book
-
+// Create Book
 app.post('/Books', async (req, res) => {
     const { title, author, genre, published_year, language, page_count, summary } = req.body;
 
-    // Basic Input Validation
-    if (!title || !author || !published_year ) {
+    if (!title || !author || !published_year) {
         return res.status(400).json({ error: 'Invalid input data. Please check required fields.' });
     }
 
     try {
-        //  insert the book into the database
+        const BooksCollection = req.db.collection("Book");
         const newBook = {
             title,
             author,
             genre,
             published_year,
             language,
-           
             page_count,
             summary,
             createdAt: new Date()
         };
 
-        const result = await BooksDatabase.insertOne(newBook);
-
-      
+        const result = await BooksCollection.insertOne(newBook);
         res.status(201).json({ message: 'Book created successfully!' });
-
     } catch (error) {
         console.error('Error creating book:', error.message);
-
-       
         res.status(500).json({
             error: 'Internal Server Error',
             details: error.message
@@ -85,23 +85,19 @@ app.post('/Books', async (req, res) => {
     }
 });
 
-//  fetch all books
+// Fetch all books
 app.get('/Books', async (req, res) => {
     try {
-        // Fetch all books from the database
-        const books = await BooksDatabase.find({}).toArray();
+        const BooksCollection = req.db.collection("Book");
+        const books = await BooksCollection.find({}).toArray();
 
-       
         if (books.length === 0) {
             return res.status(404).json({ message: 'No books found.' });
         }
 
-        
         res.status(200).json(books);
     } catch (error) {
         console.error('Error fetching books:', error.message);
-
-        // Return error response
         res.status(500).json({
             error: 'Internal Server Error',
             details: error.message
@@ -109,26 +105,21 @@ app.get('/Books', async (req, res) => {
     }
 });
 
-//  delete a book by its ID
+// Delete a book
 app.delete('/Books/:id', async (req, res) => {
     const { id } = req.params;
-    
-    const objectId = new ObjectId(id);
-   
+
     try {
-        
-        // Attempt to delete the book from the database
-        const result = await BooksDatabase.deleteOne({ _id: objectId });
-        
-        if (result.deletedCount === 0 ) {
+        const BooksCollection = req.db.collection("Book");
+        const objectId = new ObjectId(id);
+        const result = await BooksCollection.deleteOne({ _id: objectId });
+
+        if (result.deletedCount === 0) {
             return res.status(404).json({ message: 'Book not found.' });
         }
-        // Return success response
         res.status(200).json({ message: 'Book deleted successfully.' });
     } catch (error) {
         console.error('Error deleting book:', error.message);
-
-        // Return error response
         res.status(500).json({
             error: 'Internal Server Error',
             details: error.message
@@ -136,34 +127,26 @@ app.delete('/Books/:id', async (req, res) => {
     }
 });
 
-
-//books update by ID
+// Update book
 app.put('/Books/:id', async (req, res) => {
     const { id } = req.params;
     const updatedData = req.body;
-    const objectId = new ObjectId(id);
-    try {
-        
 
-       
-        const result = await BooksDatabase.findOneAndUpdate(
-            { _id: objectId },             
-            { $set: updatedData },            
-               
+    try {
+        const BooksCollection = req.db.collection("Book");
+        const objectId = new ObjectId(id);
+        const result = await BooksCollection.findOneAndUpdate(
+            { _id: objectId },
+            { $set: updatedData }
         );
-        console.log(result);
-        // If no book was updated
-        if (!result ) {
+
+        if (!result) {
             return res.status(404).json({ message: 'Book not found.' });
         }
 
-        // Return the updated book details
         res.status(200).json({ message: 'Book updated successfully.' });
-        
     } catch (error) {
         console.error('Error updating book:', error.message);
-
-        // Return error response
         res.status(500).json({
             error: 'Internal Server Error',
             details: error.message
@@ -171,14 +154,24 @@ app.put('/Books/:id', async (req, res) => {
     }
 });
 
-
-
 // Home Route
 app.get('/', (req, res) => {
-    res.send(' Application is Running');
+    res.send('Application is Running');
+});
+
+//  shutdown handler
+process.on('SIGINT', async () => {
+    try {
+        await client.close();
+        console.log('MongoDB connection closed.');
+        process.exit(0);
+    } catch (error) {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+    }
 });
 
 // Start Server
 app.listen(port, () => {
-    console.log(` Server is running on http://localhost:${port}`);
+    console.log(`Server is running on http://localhost:${port}`);
 });
