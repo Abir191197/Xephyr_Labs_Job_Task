@@ -89,7 +89,7 @@ app.post('/Books', async (req, res) => {
 app.get('/Books', async (req, res) => {
     try {
         const BooksCollection = req.db.collection("Book");
-        const books = await BooksCollection.find({}).toArray();
+        const books = await BooksCollection.find({}).sort({ createdAt: -1 }).toArray();
 
         if (books.length === 0) {
             return res.status(404).json({ message: 'No books found.' });
@@ -104,6 +104,7 @@ app.get('/Books', async (req, res) => {
         });
     }
 });
+
 
 // Delete a book
 app.delete('/Books/:id', async (req, res) => {
